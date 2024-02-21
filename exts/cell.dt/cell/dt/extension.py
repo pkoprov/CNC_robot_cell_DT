@@ -1,10 +1,13 @@
 import omni.ext
 import omni.ui as ui
 from paho.mqtt import client as mqtt_client
-import random
 from pxr import UsdGeom, Gf
 from .models import Cube
+import carb.events
 
+# Event is unique integer id. Create it from string by hashing, using helper function.
+NEW_MESSAGE = carb.events.type_from_string("cell.dt.NEW_MESSAGE_EVENT")
+BUS = omni.kit.app.get_app().get_message_bus_event_stream()
 
 
 class SyncTwinMqttSampleExtension(omni.ext.IExt):
@@ -45,15 +48,15 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         self.find_xf_prim()
 
         # and we need a callback on each frame to update our xf prim 
-        self._app_update_sub = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(
-                self._on_app_update_event, name="synctwin.mqtt_sample._on_app_update_event")   
+        self._app_update_sub = BUS.create_subscription_to_pop_by_type(NEW_MESSAGE,
+                                self._on_app_update_event, name="synctwin.mqtt_sample._on_app_update_event")   
         
     # # called on every frame, be careful what to put there 
     def _on_app_update_event(self, evt):
         # if we have found the transform lets update the translation 
-        if self.xf:            
+        if self.xf:         
             self.xf.ClearXformOpOrder()
-            self.xf.AddTranslateOp().Set(Gf.Vec3f(0, 0, self.current_coord.get_value_as_float()))       
+            self.xf.AddTranslateOp().Set(Gf.Vec3f(0, 0, evt.payload["msg"]))
 
     # called on load 
     def _on_stage_event(self, event):
@@ -85,6 +88,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             print(f"Received `{msg_content}` from `{msg.topic}` topic")
             # userdata is self 
             userdata.current_coord.set_value(float(msg_content))
+            BUS.push(NEW_MESSAGE, payload={'msg':float(msg_content)})
 
         # called when connection to mqtt broker has been established 
         def on_connect(client, userdata, flags, rc):
