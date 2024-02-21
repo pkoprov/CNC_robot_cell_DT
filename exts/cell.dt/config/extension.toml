@@ -2,24 +2,25 @@
 # Semantic Versioning is used: https://semver.org/
 version = "1.0.0"
 
+
 # Lists people or organizations that are considered the "authors" of the package.
-authors = ["NVIDIA"]
+authors = ["Pavel Koprov"]
 
 # The title and description fields are primarily for displaying extension info in UI
 title = "cell dt"
-description="A simple python extension example to use as a starting point for your extensions."
+description="An extension to run the Digital Twin of CNC and Robot cell"
 
 # Path (relative to the root) or content of readme markdown file for UI.
 readme  = "docs/README.md"
 
 # URL of the extension source repository.
-repository = ""
+repository = "https://github.com/pkoprov/CNC_robot_cell_DT"
 
 # One of categories for UI.
-category = "Example"
+category = "other"
 
 # Keywords for the extension
-keywords = ["kit", "example"]
+keywords = ["digital twin"]
 
 # Location of change log file in target (final) folder of extension, relative to the root.
 # More info on writing changelog: https://keepachangelog.com/en/1.0.0/
@@ -36,9 +37,14 @@ icon = "data/icon.png"
 [dependencies]
 "omni.kit.uiapp" = {}
 
+
 # Main python module this extension provides, it will be publicly available as "import cell.dt".
 [[python.module]]
 name = "cell.dt"
+
+[python.pipapi]
+requirements = ["paho-mqtt"]
+use_online_index = true
 
 [[test]]
 # Extra dependencies only to be used during test run
