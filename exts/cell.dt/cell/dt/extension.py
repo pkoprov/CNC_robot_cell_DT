@@ -5,6 +5,7 @@ from pxr import UsdGeom, Gf
 from .models import Cube
 import carb.events
 
+
 # Event is unique integer id. Create it from string by hashing, using helper function.
 NEW_MESSAGE = carb.events.type_from_string("cell.dt.NEW_MESSAGE_EVENT")
 BUS = omni.kit.app.get_app().get_message_bus_event_stream()
@@ -54,9 +55,9 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     # # called on every frame, be careful what to put there 
     def _on_app_update_event(self, evt):
         # if we have found the transform lets update the translation 
-        if self.xf:         
-            self.xf.ClearXformOpOrder()
-            self.xf.AddTranslateOp().Set(Gf.Vec3f(0, 0, evt.payload["msg"]))
+        if self.xf:  
+            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, evt.payload["Z"])) 
+            self.xf.MakeMatrixXform().Set(translation_matrix)
 
     # called on load 
     def _on_stage_event(self, event):
@@ -88,7 +89,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             print(f"Received `{msg_content}` from `{msg.topic}` topic")
             # userdata is self 
             userdata.current_coord.set_value(float(msg_content))
-            BUS.push(NEW_MESSAGE, payload={'msg':float(msg_content)})
+            BUS.push(NEW_MESSAGE, payload={'Z':float(msg_content)})
 
         # called when connection to mqtt broker has been established 
         def on_connect(client, userdata, flags, rc):
