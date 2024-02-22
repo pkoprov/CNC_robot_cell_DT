@@ -16,7 +16,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     def load_usd_model(self):
         print("loading model...")
         self.context = omni.usd.get_context()
-        self_cube = Cube()   
+        self._cube = Cube()   
           
     def on_startup(self, ext_id):
         print("Digital Twin startup")
@@ -40,6 +40,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
                 
                 ui.Button("connect MQTT", clicked_fn=self.connect_mqtt)
                 ui.Button("disconnect MQTT", clicked_fn=self.disconnect)
+                ui.Button("Test", clicked_fn=self.test)
                     
         # we want to know when model changes 
         self._sub_stage_event = self.context.get_stage_event_stream().create_subscription_to_pop(
@@ -47,15 +48,28 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
         # find our xf prim if model already present 
         self.find_xf_prim()
+        self.Z_coord = 0
 
         # and we need a callback on each frame to update our xf prim 
         self._app_update_sub = BUS.create_subscription_to_pop_by_type(NEW_MESSAGE,
                                 self._on_app_update_event, name="synctwin.mqtt_sample._on_app_update_event")   
-        
-    # # called on every frame, be careful what to put there 
+
+    def test(self):
+        print("test")
+        self.find_xf_prim()
+        print(self.xf)
+        if self.xf:  
+            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, self.Z_coord))
+            print(translation_matrix)
+            self.xf.MakeMatrixXform().Set(translation_matrix) 
+            print("Done translating to",translation_matrix)
+
+
+    # called on every frame, be careful what to put there 
     def _on_app_update_event(self, evt):
         # if we have found the transform lets update the translation 
         if self.xf:  
+            print(evt.payload["Z"])
             translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, evt.payload["Z"])) 
             self.xf.MakeMatrixXform().Set(translation_matrix)
 
@@ -90,6 +104,8 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             # userdata is self 
             userdata.current_coord.set_value(float(msg_content))
             BUS.push(NEW_MESSAGE, payload={'Z':float(msg_content)})
+            # userdata.Z_coord = float(msg_content)
+            # userdata.test()
 
         # called when connection to mqtt broker has been established 
         def on_connect(client, userdata, flags, rc):
