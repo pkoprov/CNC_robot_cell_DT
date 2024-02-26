@@ -2,9 +2,9 @@ import omni.ext
 import omni.ui as ui
 from paho.mqtt import client as mqtt_client
 from pxr import UsdGeom, Gf
-from .models import Cube
+from .models import VF2, add_default_light
 import carb.events
-
+import os
 
 # Event is unique integer id. Create it from string by hashing, using helper function.
 NEW_MESSAGE = carb.events.type_from_string("cell.dt.NEW_MESSAGE_EVENT")
@@ -15,18 +15,25 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     def load_usd_model(self):
         print("loading model...")
-        self.context = omni.usd.get_context()
-        self._cube = Cube()   
+        print(os.getcwd())
+        if not self.world:
+            self.world = self.stage.DefinePrim("/World", "Xform")
+        self.model = VF2(self.stage)
+        add_default_light(self.stage)
+
           
     def on_startup(self, ext_id):
         print("Digital Twin startup")
+        self.context = omni.usd.get_context()
+        self.stage = self.context.get_stage()
         # init data         
         self.mqtt_connected = False
-        self.target_prim = "/World/Cube"
+        self.world = self.stage.GetPrimAtPath("/World")
+        self.model_path = "/World/VF_2"
         self.current_coord = ui.SimpleFloatModel(0)
-
+        
         # init ui 
-        self.context = omni.usd.get_context()
+        
         self._window = ui.Window("Digital Twin", width=300, height=350)
         with self._window.frame:
             with ui.VStack():
@@ -41,6 +48,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
                 ui.Button("connect MQTT", clicked_fn=self.connect_mqtt)
                 ui.Button("disconnect MQTT", clicked_fn=self.disconnect)
                 ui.Button("Test", clicked_fn=self.test)
+                ui.Button("Clear Stage", clicked_fn=self.clear_stage)
                     
         # we want to know when model changes 
         self._sub_stage_event = self.context.get_stage_event_stream().create_subscription_to_pop(
@@ -48,18 +56,23 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
         # find our xf prim if model already present 
         self.find_xf_prim()
-        self.Z_coord = 0
 
         # and we need a callback on each frame to update our xf prim 
         self._app_update_sub = BUS.create_subscription_to_pop_by_type(NEW_MESSAGE,
                                 self._on_app_update_event, name="synctwin.mqtt_sample._on_app_update_event")   
+
+    def clear_stage(self):
+        print("clearing stage")
+        for prim in self.stage.Traverse():
+            if prim.GetPath() != "/":  # Skip the PseudoRoot
+                self.stage.RemovePrim(prim.GetPath())
 
     def test(self):
         print("test")
         self.find_xf_prim()
         print(self.xf)
         if self.xf:  
-            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, self.Z_coord))
+            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, 0))
             print(translation_matrix)
             self.xf.MakeMatrixXform().Set(translation_matrix) 
             print("Done translating to",translation_matrix)
@@ -82,8 +95,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     # find the prim to be transformed 
     def find_xf_prim(self):
         # get prim from input 
-        stage = self.context.get_stage()
-        prim = stage.GetPrimAtPath(self.target_prim)
+        prim = self.stage.GetPrimAtPath(self.model_path)
         
         self.xf = UsdGeom.Xformable(prim)
         
@@ -104,8 +116,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             # userdata is self 
             userdata.current_coord.set_value(float(msg_content))
             BUS.push(NEW_MESSAGE, payload={'Z':float(msg_content)})
-            # userdata.Z_coord = float(msg_content)
-            # userdata.test()
+
 
         # called when connection to mqtt broker has been established 
         def on_connect(client, userdata, flags, rc):
