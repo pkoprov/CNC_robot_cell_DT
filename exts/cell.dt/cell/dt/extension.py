@@ -20,7 +20,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             self.world = self.stage.DefinePrim("/World", "Xform")
         self.model = VF2(self.stage)
         add_default_light(self.stage)
-        self.find_xf_prim()
+        self.find_model_prim()
 
           
     def on_startup(self, ext_id):
@@ -34,7 +34,6 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         self.current_coord = ui.SimpleFloatModel(0)
         
         # init ui 
-        
         self._window = ui.Window("Digital Twin", width=300, height=350)
         with self._window.frame:
             with ui.VStack():
@@ -56,7 +55,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
                 self._on_stage_event)
 
         # find our xf prim if model already present 
-        self.find_xf_prim()
+        self.find_model_prim()
 
         # and we need a callback on each frame to update our xf prim 
         self._app_update_sub = BUS.create_subscription_to_pop_by_type(NEW_MESSAGE,
@@ -70,7 +69,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     def test(self):
         print("test")
-        self.find_xf_prim()
+        self.find_model_prim()
         print(self.xf)
         if self.xf:  
             translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, 0))
@@ -91,10 +90,10 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     def _on_stage_event(self, event):
         if event.type == int(omni.usd.StageEventType.OPENED): 
             print("opened new model")
-            self.find_xf_prim()
+            self.find_model_prim()
     
     # find the prim to be transformed 
-    def find_xf_prim(self):
+    def find_model_prim(self):
         # get prim from input 
         prim = self.stage.GetPrimAtPath(self.model_path)
         
