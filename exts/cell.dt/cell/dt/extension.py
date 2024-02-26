@@ -4,7 +4,8 @@ from paho.mqtt import client as mqtt_client
 from pxr import UsdGeom, Gf
 from .models import VF2, add_default_light
 import carb.events
-import os
+import json
+
 
 # Event is unique integer id. Create it from string by hashing, using helper function.
 NEW_MESSAGE = carb.events.type_from_string("cell.dt.NEW_MESSAGE_EVENT")
@@ -15,7 +16,6 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     def load_usd_model(self):
         print("loading model...")
-        print(os.getcwd())
         if not self.world:
             self.world = self.stage.DefinePrim("/World", "Xform")
         self.model = VF2(self.stage)
@@ -82,8 +82,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     def _on_app_update_event(self, evt):
         # if we have found the transform lets update the translation 
         if self.xf:  
-            print(evt.payload["Z"])
-            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, evt.payload["Z"])) 
+            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(evt.payload["X"], evt.payload["Y"], evt.payload["Z"])) 
             self.xf.MakeMatrixXform().Set(translation_matrix)
 
     # called on load 
@@ -112,10 +111,11 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         # this is called when a message arrives 
         def on_message(client, userdata, msg):
             msg_content = msg.payload.decode()
+            msg_content = json.loads(msg_content)
             print(f"Received `{msg_content}` from `{msg.topic}` topic")
             # userdata is self 
-            userdata.current_coord.set_value(float(msg_content))
-            BUS.push(NEW_MESSAGE, payload={'Z':float(msg_content)})
+            userdata.current_coord.set_value(msg_content["Z"])
+            BUS.push(NEW_MESSAGE, payload=msg_content)
 
 
         # called when connection to mqtt broker has been established 
@@ -123,7 +123,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             print(f">> connected {client} {rc}")
             if rc == 0:
                 userdata.status_label.text = "Connected to MQTT Broker!"
-                topic = "ncsu/digital_twin/Cube"
+                topic = "test"
                 print(f"subscribing topic {topic}")
                 client.subscribe(topic)
             else:
@@ -140,7 +140,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             return
             
         # Set Connecting Client ID
-        self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1,  'Omni Cube Client')
+        self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1,  'Omni DT Client')
         self.client.user_data_set(self)
         self.client.on_connect = on_connect
         self.client.on_message = on_message
