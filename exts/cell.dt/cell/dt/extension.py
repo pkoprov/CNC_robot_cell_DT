@@ -20,6 +20,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             self.world = self.stage.DefinePrim("/World", "Xform")
         self.model = VF2(self.stage)
         add_default_light(self.stage)
+        self.find_xf_prim()
 
           
     def on_startup(self, ext_id):
