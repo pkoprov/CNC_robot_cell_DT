@@ -22,7 +22,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         add_default_light(self.stage)
         self.find_model_prim()
 
-          
+         
     def on_startup(self, ext_id):
         print("Digital Twin startup")
         self.context = omni.usd.get_context()
@@ -69,21 +69,31 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     def test(self):
         print("test")
-        self.find_model_prim()
-        print(self.xf)
-        if self.xf:  
+        if self.vf2:  
             translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, 0))
             print(translation_matrix)
-            self.xf.MakeMatrixXform().Set(translation_matrix) 
+            self.vf2.MakeMatrixXform().Set(translation_matrix) 
             print("Done translating to",translation_matrix)
 
 
     # called on every frame, be careful what to put there 
     def _on_app_update_event(self, evt):
         # if we have found the transform lets update the translation 
-        if self.xf:  
-            translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(evt.payload["X"], evt.payload["Y"], evt.payload["Z"])) 
-            self.xf.MakeMatrixXform().Set(translation_matrix)
+        if self.vf2:
+            for key in evt.payload.get_keys():
+                zero = Gf.Matrix4d(self.vf2.axis_origin[key])
+                zero_tr = zero.ExtractTranslation()
+                match key:
+                    case "X":
+                        delta = Gf.Vec3d(evt.payload[key],0,0)
+                    case "Y":
+                        delta = Gf.Vec3d(0,evt.payload[key],0)
+                    case "Z":
+                        delta = Gf.Vec3d(0,0,evt.payload[key])
+                translation = zero_tr + delta
+                translation_matrix = zero.SetTranslateOnly(translation) 
+                self.vf2.axes[key].MakeMatrixXform().Set(translation_matrix)
+
 
     # called on load 
     def _on_stage_event(self, event):
@@ -95,16 +105,24 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     def find_model_prim(self):
         # get prim from input 
         prim = self.stage.GetPrimAtPath(self.model_path)
-        
-        self.xf = UsdGeom.Xformable(prim)
-        
-        if self.xf:
-            msg = "found xf."
+        self.vf2 = UsdGeom.Xformable(prim)
+       
+        if self.vf2:
+            msg = "found model."
+            self.vf2.axes = {}
+            self.vf2.axis_origin = {}
+            for coord, path in {"X":"/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle/X_Axis_Table",
+                        "Y":"/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle",
+                        "Z":"/World/VF_2/Geometry/VF_2_0/Z_Axis_Ram"}.items():
+                prim = self.stage.GetPrimAtPath(path)
+                self.vf2.axes[coord] = UsdGeom.Xformable(prim)
+                self.vf2.axis_origin[coord] = self.vf2.axes[coord].GetLocalTransformation()
         else:
-            msg = "## xf not found."
-        self.status_label.text = msg 
+            msg = "## model not found."
+        self.status_label.text = msg
         print(msg)
-
+        
+        
     # connect to mqtt broker 
     def connect_mqtt(self):
 
