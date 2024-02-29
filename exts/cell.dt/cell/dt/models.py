@@ -1,10 +1,5 @@
 import omni.kit.commands as commands
 from pxr import Usd, Sdf, UsdLux, Gf, UsdGeom
-import omni
-
-ext_dir = omni.kit.app.get_app().get_extension_manager().get_extension_path('cell.dt')
-print(ext_dir)
-
 
 class Cube():
     def __init__(self):
@@ -31,15 +26,15 @@ class VF2():
 def add_default_light(stage):
     # Define the path for the new light prim
     lightPath = "/World/DefaultLight"
-    
+
     # Create a DistantLight prim at the specified path
     distantLight = UsdLux.DistantLight.Define(stage, lightPath)
-    
+
     # Set some basic properties of the light
-    distantLight.CreateIntensityAttr(5000)  # Adjust the intensity as needed
+    distantLight.CreateIntensityAttr(1500)  # Adjust the intensity as needed
     distantLight.CreateColorAttr((1.0, 1.0, 1.0))  # White light
     distantLight.CreateAngleAttr(0.53)  # Adjust the angle for softer shadows
-    
+
     # Position the light (optional, depending on whether you need a specific direction)
     # This example positions the light at a 45-degree angle downward, like sunlight
     lightXformable = UsdGeom.Xformable(distantLight)

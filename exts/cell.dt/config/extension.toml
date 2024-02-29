@@ -43,7 +43,7 @@ icon = "data/icon.png"
 name = "cell.dt"
 
 [python.pipapi]
-requirements = ["paho-mqtt"]
+requirements = ["paho-mqtt", "protobuf"]
 use_online_index = true
 
 [[test]]
