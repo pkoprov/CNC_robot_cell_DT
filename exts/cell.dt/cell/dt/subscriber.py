@@ -77,12 +77,12 @@ class DT:
                 client.subscribe(topic, qos)
                 print(f"Succesfully subscribed to topic {topic}")
         else:
-            print("Device Failed to connect with result code %s", rc)
+            print("Device Failed to connect with result code %s" % rc)
             self.disconnect()  # Ensure a clean disconnect if connection fails.
 
     def on_message(self, client, userdata, msg):
         """Handle incoming MQTT messages."""
-        print("Device message arrived: %s", msg.topic)
+        print("Device message arrived: %s" % msg.topic)
         tokens = msg.topic.split("/")
         # Basic validation of the message topic structure
         if (
@@ -92,7 +92,7 @@ class DT:
         ):
             self.handle_message(tokens, msg)
         else:
-            print("Unknown namespace received: %s", msg.topic)
+            print("Unknown namespace received: %s" % msg.topic)
 
     def handle_message(self, tokens, msg):
         """Dispatches message handling based on the topic."""
@@ -103,7 +103,7 @@ class DT:
         elif tokens[2] == "DDATA":
             self.handle_data_message(msg)
         else:
-            print("Unhandled message type: %s", "/".join(tokens))
+            print("Unhandled message type: %s" % "/".join(tokens))
 
     def handle_death_message(self):
         """Handles device death messages."""
