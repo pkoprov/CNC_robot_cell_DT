@@ -31,7 +31,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         self.mqtt_connected = False
         self.world = self.stage.GetPrimAtPath("/World")
         self.model_path = "/World/VF_2"
-        self.current_coord = ui.SimpleFloatModel(0)
+        self.current_coord = ui.SimpleStringModel("")
 
         # init ui
         self._window = ui.Window("Digital Twin", width=300, height=350)
@@ -40,7 +40,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
                 ui.Button("load model",clicked_fn=self.load_usd_model)
 
-                ui.Label("Current Z coord")
+                ui.Label("Current axes coordinates:")
                 ui.StringField(self.current_coord)
 
                 self.status_label = ui.Label("- not connected -")
@@ -79,21 +79,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     # called on every frame, be careful what to put there
     def _on_app_update_event(self, evt):
-        # if we have found the transform lets update the translation
-        self.current_coord.set_value(self.dt.coordinates["Z"])
-        if self.vf2:
-            for key in evt.payload.get_keys():
-                zero = Gf.Matrix4d(self.vf2.axis_origin[key])
-                zero_tr = zero.ExtractTranslation()
-                if key == "X":
-                    delta = Gf.Vec3d(-evt.payload[key], 0, 0)
-                elif key == "Y":
-                    delta = Gf.Vec3d(0, -evt.payload[key], 0)
-                elif key == "Z":
-                    delta = Gf.Vec3d(0, 0, evt.payload[key])
-                translation = zero_tr + delta
-                translation_matrix = zero.SetTranslateOnly(translation) 
-                self.vf2.axes[key].MakeMatrixXform().Set(translation_matrix)
+            self.current_coord.set_value(str(self.vf2_client.coordinates))
 
     # called on load
     def _on_stage_event(self, event):
