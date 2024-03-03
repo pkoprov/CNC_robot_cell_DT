@@ -5,8 +5,6 @@ from pxr import UsdGeom, Gf
 from .models import VF2, add_default_light
 from .subscriber import DT
 import carb.events
-import json
-
 
 # Event is unique integer id. Create it from string by hashing, using helper function.
 NEW_MESSAGE = carb.events.type_from_string("cell.dt.NEW_MESSAGE_EVENT")
@@ -47,6 +45,7 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
                 ui.Button("connect MQTT", clicked_fn=self.connect_mqtt)
                 ui.Button("disconnect MQTT", clicked_fn=self.disconnect)
+                ui.Button("Reset Twin", clicked_fn=self.reset)
                 ui.Button("Test", clicked_fn=self.test)
                 ui.Button("Clear Stage", clicked_fn=self.clear_stage)
 
@@ -63,23 +62,43 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     def clear_stage(self):
         print("clearing stage")
+        self.context = omni.usd.get_context()
+        self.stage = self.context.get_stage()
         for prim in self.stage.Traverse():
             if prim.GetPath() != "/":  # Skip the PseudoRoot
                 self.stage.RemovePrim(prim.GetPath())
 
     def test(self):
         print("test")
-        print(self.dt.coordinates)
 
-        # if self.vf2:
-        #     translation_matrix = Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 0, 0))
-        #     print(translation_matrix)
-        #     self.vf2.MakeMatrixXform().Set(translation_matrix)
-        #     print("Done translating to",translation_matrix)
+        print(self.vf2_client.coordinates)
+
+    def reset(self):
+        print("reset")
+        BUS.push(NEW_MESSAGE, payload={"CMD": "RESET_ALL"})
 
     # called on every frame, be careful what to put there
     def _on_app_update_event(self, evt):
+        if "CMD" in  evt.payload:
+            if evt.payload["CMD"] == "RESET_ALL":
+                for coord, val in self.vf2_model.axes.items():
+                    val.MakeMatrixXform().Set(self.vf2_model.axis_origin[coord])
+        else:
+            # if we have found the transform lets update the translation
             self.current_coord.set_value(str(self.vf2_client.coordinates))
+            if self.vf2_model:
+                for key in evt.payload.get_keys():
+                    zero = Gf.Matrix4d(self.vf2_model.axis_origin[key])
+                    zero_tr = zero.ExtractTranslation()
+                    if key == "X":
+                        delta = Gf.Vec3d(-evt.payload[key], 0, 0)
+                    elif key == "Y":
+                        delta = Gf.Vec3d(0, -evt.payload[key], 0)
+                    elif key == "Z":
+                        delta = Gf.Vec3d(0, 0, evt.payload[key])
+                    translation = zero_tr + delta
+                    translation_matrix = zero.SetTranslateOnly(translation)
+                    self.vf2_model.axes[key].MakeMatrixXform().Set(translation_matrix)
 
     # called on load
     def _on_stage_event(self, event):
@@ -116,14 +135,14 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         self.vf2_client.connect()
 
     def disconnect(self):
-        self.dt.disconnect()
+        self.vf2_client.disconnect()
         self.status_label.text = "Disonnected from MQTT Broker!"
 
     def on_shutdown(self):
         print("Digital Twin shutdown")
         self._app_update_sub = None
         try:
-            self.dt.disconnect()
+            self.vf2_client.disconnect()
         except:
             print("No DT to disconnect from.")
             pass
