@@ -91,18 +91,20 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     def find_model_prim(self):
         # get prim from input
         prim = self.stage.GetPrimAtPath(self.model_path)
-        self.vf2 = UsdGeom.Xformable(prim)
+        self.vf2_model = UsdGeom.Xformable(prim)
 
-        if self.vf2:
+        if self.vf2_model:
             msg = "found model."
-            self.vf2.axes = {}
-            self.vf2.axis_origin = {}
+            self.vf2_model.axes = {}
+            self.vf2_model.axis_origin = {}
             for coord, path in {"X":"/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle/X_Axis_Table",
                         "Y":"/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle",
                         "Z":"/World/VF_2/Geometry/VF_2_0/Z_Axis_Ram"}.items():
                 prim = self.stage.GetPrimAtPath(path)
-                self.vf2.axes[coord] = UsdGeom.Xformable(prim)
-                self.vf2.axis_origin[coord] = self.vf2.axes[coord].GetLocalTransformation()
+                self.vf2_model.axes[coord] = UsdGeom.Xformable(prim)
+                self.vf2_model.axis_origin[coord] = self.vf2_model.axes[
+                    coord
+                ].GetLocalTransformation()
         else:
             msg = "## model not found."
         self.status_label.text = msg
@@ -110,51 +112,8 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     # connect to mqtt broker
     def connect_mqtt(self):
-        self.dt = DT()
-        self.dt.connect()
-
-        # BUS.push(NEW_MESSAGE, payload=coord)
-
-        # # this is called when a message arrives
-        # def on_message(client, userdata, msg):
-        #     msg_content = msg.payload.decode()
-        #     msg_content = json.loads(msg_content)
-        #     print(f"Received `{msg_content}` from `{msg.topic}` topic")
-        #     # userdata is self
-        #     userdata.current_coord.set_value(msg_content["Z"])
-        #     BUS.push(NEW_MESSAGE, payload=msg_content)
-
-        # # called when connection to mqtt broker has been established
-        # def on_connect(client, userdata, flags, rc):
-        #     print(f">> connected {client} {rc}")
-        #     if rc == 0:
-        #         userdata.status_label.text = "Connected to MQTT Broker!"
-        #         topic = "test"
-        #         print(f"subscribing topic {topic}")
-        #         client.subscribe(topic)
-        #     else:
-        #         userdata.status_label.text = f"Failed to connect, return code {rc}"
-
-        # # let us know when we've subscribed
-        # def on_subscribe(client, userdata, mid, granted_qos):
-        #     print(f"subscribed {mid} {granted_qos}")
-
-        # # now connect broker
-        # if self.mqtt_connected:
-        #     print("Already connected to MQTT Broker!")
-        #     self.status_label.text = "Already connected to MQTT Broker!"
-        #     return
-
-        # # Set Connecting Client ID
-        # self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1,  'Omni DT Client')
-        # self.client.user_data_set(self)
-        # self.client.on_connect = on_connect
-        # self.client.on_message = on_message
-        # self.client.on_subscribe = on_subscribe
-        # self.client.connect("192.168.10.4")
-        # self.client.loop_start()
-        # self.mqtt_connected = True
-        # return
+        self.vf2_client = DT()
+        self.vf2_client.connect()
 
     def disconnect(self):
         self.dt.disconnect()
