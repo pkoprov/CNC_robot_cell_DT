@@ -17,7 +17,7 @@ readme  = "docs/README.md"
 repository = "https://github.com/pkoprov/CNC_robot_cell_DT"
 
 # One of categories for UI.
-category = "other"
+category = "Simulation"
 
 # Keywords for the extension
 keywords = ["digital twin"]
