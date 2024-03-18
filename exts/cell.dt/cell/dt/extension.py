@@ -1,7 +1,6 @@
 import omni.ext
 import omni.ui as ui
-from paho.mqtt import client as mqtt_client
-from pxr import UsdGeom, Gf
+from pxr import UsdGeom, UsdPhysics
 from .models import VF2, add_default_light
 from .subscriber import DT
 import carb.events
@@ -71,7 +70,10 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
     def test(self):
         print("test")
 
-        print(self.vf2_client.coordinates)
+        print(self.vf2_model.axes_drives)
+        self.current_coord.set_value(
+            str(self.vf2_model.axes_drives["X"].GetTargetPositionAttr().Get())
+        )
 
     def reset(self):
         print("reset")
@@ -79,26 +81,14 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
     # called on every frame, be careful what to put there
     def _on_app_update_event(self, evt):
+        self.current_coord.set_value(str(evt.payload))
         if "CMD" in  evt.payload:
             if evt.payload["CMD"] == "RESET_ALL":
-                for coord, val in self.vf2_model.axes.items():
-                    val.MakeMatrixXform().Set(self.vf2_model.axis_origin[coord])
+                for drive in self.vf2_model.axes_drives.values():
+                    drive.GetTargetPositionAttr().Set(0)
         else:
-            # if we have found the transform lets update the translation
-            self.current_coord.set_value(str(self.vf2_client.coordinates))
-            if self.vf2_model:
-                for key in evt.payload.get_keys():
-                    zero = Gf.Matrix4d(self.vf2_model.axis_origin[key])
-                    zero_tr = zero.ExtractTranslation()
-                    if key == "X":
-                        delta = Gf.Vec3d(-evt.payload[key], 0, 0)
-                    elif key == "Y":
-                        delta = Gf.Vec3d(0, -evt.payload[key], 0)
-                    elif key == "Z":
-                        delta = Gf.Vec3d(0, 0, evt.payload[key])
-                    translation = zero_tr + delta
-                    translation_matrix = zero.SetTranslateOnly(translation)
-                    self.vf2_model.axes[key].MakeMatrixXform().Set(translation_matrix)
+            for coord, drive in self.vf2_model.axes_drives.items():
+                drive.GetTargetPositionAttr().Set(evt.payload[coord])
 
     # called on load
     def _on_stage_event(self, event):
@@ -114,20 +104,21 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
 
         if self.vf2_model:
             msg = "found model."
-            self.vf2_model.axes = {}
-            self.vf2_model.axis_origin = {}
-            for coord, path in {"X":"/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle/X_Axis_Table",
-                        "Y":"/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle",
-                        "Z":"/World/VF_2/Geometry/VF_2_0/Z_Axis_Ram"}.items():
-                prim = self.stage.GetPrimAtPath(path)
-                self.vf2_model.axes[coord] = UsdGeom.Xformable(prim)
-                self.vf2_model.axis_origin[coord] = self.vf2_model.axes[
-                    coord
-                ].GetLocalTransformation()
+            self.status_label.text = msg
+
+            self.vf2_model.axes_drives = {}
+            for coord, path in {
+                "X": "/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle/X_axis_table/Table/X_axis_table_PrismaticJoint",
+                "Y": "/World/VF_2/Geometry/VF_2_0/Y_Axis_Saddle/Bearings/Y_axis_saddle_PrismaticJoint",
+                "Z": "/World/VF_2/Geometry/VF_2_0/Z_Axis_Ram/Z_axis_ram_PrismaticJoint",
+            }.items():
+                drive = self.stage.GetPrimAtPath(path)
+                self.vf2_model.axes_drives[coord] = UsdPhysics.DriveAPI.GetAll(drive)[0]
+
         else:
             msg = "## model not found."
-        self.status_label.text = msg
         print(msg)
+        
 
     # connect to mqtt broker
     def connect_mqtt(self):
