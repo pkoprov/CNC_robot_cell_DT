@@ -49,6 +49,7 @@ class DT:
             "Present machine coordinate position Z",
         )
         self.coordinates = {"X": 0, "Y": 0, "Z": 0}
+        self.tool_in_use = 1
 
     def connect(self):
         broker = self.config.get("broker", "localhost")
@@ -119,6 +120,9 @@ class DT:
             inboundPayload = sparkplug_b_pb2.Payload()
             inboundPayload.ParseFromString(msg.payload)
             for metric in inboundPayload.metrics:
+                if metric.name == "Tool Number in use":
+                    self.tool_in_use = metric.int_value
+                    continue
                 if metric.name in self.coord_names:
                     coord = metric.name.split()[-1]
                     self.coordinates[coord] = round(metric.float_value * 0.0254, 5)

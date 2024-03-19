@@ -89,6 +89,9 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
         else:
             for coord, drive in self.vf2_model.axes_drives.items():
                 drive.GetTargetPositionAttr().Set(evt.payload[coord])
+            self.vf2_model.carousel.GetTargetPositionAttr().Set(
+                (self.vf2_client.tool_in_use - 1) * 18
+            )
 
     # called on load
     def _on_stage_event(self, event):
@@ -114,11 +117,18 @@ class SyncTwinMqttSampleExtension(omni.ext.IExt):
             }.items():
                 drive = self.stage.GetPrimAtPath(path)
                 self.vf2_model.axes_drives[coord] = UsdPhysics.DriveAPI.GetAll(drive)[0]
+            drive = self.stage.GetPrimAtPath(
+                "/World/VF_2/Geometry/VF_2_0/Umbrella_Tool_Changer/Umbrella/Carousel/RevoluteJoint"
+            )
+            self.vf2_model.carousel = UsdPhysics.DriveAPI.GetAll(drive)[0]
+            drive = self.stage.GetPrimAtPath(
+                "/World/VF_2/Geometry/VF_2_0/Umbrella_Tool_Changer/Drive_Assy/PrismaticJoint"
+            )
+            self.vf2_model.umbrella = UsdPhysics.DriveAPI.GetAll(drive)[0]
 
         else:
             msg = "## model not found."
         print(msg)
-        
 
     # connect to mqtt broker
     def connect_mqtt(self):
